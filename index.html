@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediaPipe Toys - Hello World</title>
+  </head>
+  <body>
+    <main id="app">
+      <section class="shell" aria-label="MediaPipe face mesh hello world">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">MediaPipe Toys</p>
+            <h1>Hello World</h1>
+          </div>
+          <button id="enable-camera" type="button">Enable camera</button>
+        </header>
+
+        <div class="stage" id="stage">
+          <video id="webcam" autoplay muted playsinline></video>
+          <canvas id="overlay"></canvas>
+          <div class="empty-state" id="empty-state">
+            <span>Camera preview will appear here</span>
+          </div>
+        </div>
+
+        <footer class="statusbar">
+          <span id="status">Ready</span>
+          <span id="face-count">Faces: 0</span>
+        </footer>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
