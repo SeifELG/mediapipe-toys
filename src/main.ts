@@ -127,6 +127,14 @@ function drawResult(result: FaceLandmarkerResult) {
       color: "#ffcc4d",
       lineWidth: 2
     });
+    drawingUtils?.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, {
+      color: "#ff6b7a",
+      lineWidth: 3
+    });
+    drawingUtils?.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, {
+      color: "#ff6b7a",
+      lineWidth: 3
+    });
     drawingUtils?.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, {
       color: "rgba(255, 255, 255, 0.7)",
       lineWidth: 1
