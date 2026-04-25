@@ -16,41 +16,30 @@
           <button id="enable-camera" type="button">Enable camera</button>
         </header>
 
-        <div class="stage" id="stage">
-          <video id="webcam" autoplay muted playsinline></video>
-          <canvas id="overlay"></canvas>
-          <div class="empty-state" id="empty-state">
-            <span>Camera preview will appear here</span>
+        <div class="workspace">
+          <div class="camera-column">
+            <div class="stage" id="stage">
+              <video id="webcam" autoplay muted playsinline></video>
+              <canvas id="overlay"></canvas>
+              <div class="empty-state" id="empty-state">
+                <span>Camera preview will appear here</span>
+              </div>
+            </div>
+
+            <footer class="statusbar">
+              <span id="status">Ready</span>
+              <span id="face-count">Faces: 0</span>
+            </footer>
           </div>
+
+          <section class="blendshape-panel" aria-label="Eye blendshape scores">
+            <div class="panel-heading">
+              <h2>Eye Blendshapes</h2>
+              <span>0-1 live score</span>
+            </div>
+            <div class="score-list" id="eye-score-list"></div>
+          </section>
         </div>
-
-        <footer class="statusbar">
-          <span id="status">Ready</span>
-          <span id="face-count">Faces: 0</span>
-        </footer>
-
-        <section class="blendshape-panel" aria-label="Eye blendshape scores">
-          <div class="score-row">
-            <span>eyeBlinkLeft</span>
-            <meter id="eye-blink-left-meter" min="0" max="1" value="0"></meter>
-            <strong id="eye-blink-left-value">0.000</strong>
-          </div>
-          <div class="score-row">
-            <span>eyeBlinkRight</span>
-            <meter id="eye-blink-right-meter" min="0" max="1" value="0"></meter>
-            <strong id="eye-blink-right-value">0.000</strong>
-          </div>
-          <div class="score-row">
-            <span>eyeSquintLeft</span>
-            <meter id="eye-squint-left-meter" min="0" max="1" value="0"></meter>
-            <strong id="eye-squint-left-value">0.000</strong>
-          </div>
-          <div class="score-row">
-            <span>eyeSquintRight</span>
-            <meter id="eye-squint-right-meter" min="0" max="1" value="0"></meter>
-            <strong id="eye-squint-right-value">0.000</strong>
-          </div>
-        </section>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>

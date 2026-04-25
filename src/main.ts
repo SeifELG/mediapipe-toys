@@ -12,28 +12,24 @@ const canvas = getElement<HTMLCanvasElement>("#overlay");
 const statusLabel = getElement<HTMLSpanElement>("#status");
 const faceCountLabel = getElement<HTMLSpanElement>("#face-count");
 const emptyState = getElement<HTMLDivElement>("#empty-state");
-const eyeScores = [
-  {
-    name: "eyeBlinkLeft",
-    meter: getElement<HTMLMeterElement>("#eye-blink-left-meter"),
-    value: getElement<HTMLElement>("#eye-blink-left-value")
-  },
-  {
-    name: "eyeBlinkRight",
-    meter: getElement<HTMLMeterElement>("#eye-blink-right-meter"),
-    value: getElement<HTMLElement>("#eye-blink-right-value")
-  },
-  {
-    name: "eyeSquintLeft",
-    meter: getElement<HTMLMeterElement>("#eye-squint-left-meter"),
-    value: getElement<HTMLElement>("#eye-squint-left-value")
-  },
-  {
-    name: "eyeSquintRight",
-    meter: getElement<HTMLMeterElement>("#eye-squint-right-meter"),
-    value: getElement<HTMLElement>("#eye-squint-right-value")
-  }
+const eyeScoreList = getElement<HTMLDivElement>("#eye-score-list");
+const eyeBlendshapeNames = [
+  "eyeBlinkLeft",
+  "eyeBlinkRight",
+  "eyeLookDownLeft",
+  "eyeLookDownRight",
+  "eyeLookInLeft",
+  "eyeLookInRight",
+  "eyeLookOutLeft",
+  "eyeLookOutRight",
+  "eyeLookUpLeft",
+  "eyeLookUpRight",
+  "eyeSquintLeft",
+  "eyeSquintRight",
+  "eyeWideLeft",
+  "eyeWideRight"
 ];
+const maxHistoryLength = 140;
 
 const maybeCanvasContext = canvas.getContext("2d");
 
@@ -42,6 +38,7 @@ if (!maybeCanvasContext) {
 }
 
 const canvasContext = maybeCanvasContext;
+const eyeScores = createEyeScoreRows();
 
 let faceLandmarker: FaceLandmarker | null = null;
 let drawingUtils: DrawingUtils | null = null;
@@ -171,9 +168,99 @@ function updateEyeScores(result: FaceLandmarkerResult) {
   for (const score of eyeScores) {
     const value = categories.find((category) => category.categoryName === score.name)?.score ?? 0;
 
-    score.meter.value = value;
+    score.history.push(value);
+
+    if (score.history.length > maxHistoryLength) {
+      score.history.shift();
+    }
+
     score.value.textContent = value.toFixed(3);
+    drawScoreChart(score);
   }
+}
+
+function createEyeScoreRows() {
+  return eyeBlendshapeNames.map((name) => {
+    const row = document.createElement("div");
+    const label = document.createElement("span");
+    const chart = document.createElement("canvas");
+    const value = document.createElement("strong");
+    const chartContext = chart.getContext("2d");
+
+    if (!chartContext) {
+      throw new Error("Chart canvas rendering is not supported in this browser.");
+    }
+
+    row.className = "score-row";
+    label.textContent = name;
+    chart.width = 220;
+    chart.height = 34;
+    value.textContent = "0.000";
+
+    row.append(label, chart, value);
+    eyeScoreList.append(row);
+
+    return {
+      name,
+      chart,
+      chartContext,
+      value,
+      history: [] as number[]
+    };
+  });
+}
+
+function drawScoreChart(score: (typeof eyeScores)[number]) {
+  const { chart, chartContext, history } = score;
+  const pixelRatio = window.devicePixelRatio || 1;
+  const width = chart.clientWidth;
+  const height = chart.clientHeight;
+
+  if (!width || !height) {
+    return;
+  }
+
+  const scaledWidth = Math.round(width * pixelRatio);
+  const scaledHeight = Math.round(height * pixelRatio);
+
+  if (chart.width !== scaledWidth || chart.height !== scaledHeight) {
+    chart.width = scaledWidth;
+    chart.height = scaledHeight;
+  }
+
+  chartContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  chartContext.clearRect(0, 0, width, height);
+
+  chartContext.fillStyle = "rgba(255, 255, 255, 0.035)";
+  chartContext.fillRect(0, 0, width, height);
+
+  chartContext.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  chartContext.lineWidth = 1;
+  chartContext.beginPath();
+  chartContext.moveTo(0, height / 2);
+  chartContext.lineTo(width, height / 2);
+  chartContext.stroke();
+
+  if (history.length < 2) {
+    return;
+  }
+
+  chartContext.strokeStyle = "#74d7ff";
+  chartContext.lineWidth = 2;
+  chartContext.beginPath();
+
+  history.forEach((value, index) => {
+    const x = (index / (maxHistoryLength - 1)) * width;
+    const y = height - value * height;
+
+    if (index === 0) {
+      chartContext.moveTo(x, y);
+    } else {
+      chartContext.lineTo(x, y);
+    }
+  });
+
+  chartContext.stroke();
 }
 
 function syncCanvasToVideo() {
