@@ -93,8 +93,8 @@ h1 {
   background: #1b2022;
 }
 
-video,
-canvas,
+.stage video,
+.stage canvas,
 .empty-state {
   position: absolute;
   inset: 0;
@@ -102,13 +102,13 @@ canvas,
   height: 100%;
 }
 
-video,
-canvas {
+.stage video,
+.stage canvas {
   object-fit: cover;
   transform: scaleX(-1);
 }
 
-canvas {
+.stage canvas {
   pointer-events: none;
 }
 
