@@ -12,6 +12,28 @@ const canvas = getElement<HTMLCanvasElement>("#overlay");
 const statusLabel = getElement<HTMLSpanElement>("#status");
 const faceCountLabel = getElement<HTMLSpanElement>("#face-count");
 const emptyState = getElement<HTMLDivElement>("#empty-state");
+const eyeScores = [
+  {
+    name: "eyeBlinkLeft",
+    meter: getElement<HTMLMeterElement>("#eye-blink-left-meter"),
+    value: getElement<HTMLElement>("#eye-blink-left-value")
+  },
+  {
+    name: "eyeBlinkRight",
+    meter: getElement<HTMLMeterElement>("#eye-blink-right-meter"),
+    value: getElement<HTMLElement>("#eye-blink-right-value")
+  },
+  {
+    name: "eyeSquintLeft",
+    meter: getElement<HTMLMeterElement>("#eye-squint-left-meter"),
+    value: getElement<HTMLElement>("#eye-squint-left-value")
+  },
+  {
+    name: "eyeSquintRight",
+    meter: getElement<HTMLMeterElement>("#eye-squint-right-meter"),
+    value: getElement<HTMLElement>("#eye-squint-right-value")
+  }
+];
 
 const maybeCanvasContext = canvas.getContext("2d");
 
@@ -113,6 +135,7 @@ function renderLoop() {
 function drawResult(result: FaceLandmarkerResult) {
   canvasContext.clearRect(0, 0, canvas.width, canvas.height);
   faceCountLabel.textContent = `Faces: ${result.faceLandmarks.length}`;
+  updateEyeScores(result);
 
   for (const landmarks of result.faceLandmarks) {
     drawingUtils?.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
@@ -139,6 +162,17 @@ function drawResult(result: FaceLandmarkerResult) {
       color: "rgba(255, 255, 255, 0.7)",
       lineWidth: 1
     });
+  }
+}
+
+function updateEyeScores(result: FaceLandmarkerResult) {
+  const categories = result.faceBlendshapes[0]?.categories ?? [];
+
+  for (const score of eyeScores) {
+    const value = categories.find((category) => category.categoryName === score.name)?.score ?? 0;
+
+    score.meter.value = value;
+    score.value.textContent = value.toFixed(3);
   }
 }
 
