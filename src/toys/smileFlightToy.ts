@@ -1,15 +1,24 @@
 import type { FaceFrame, Toy } from "../types";
 
+type Gate = {
+  x: number;
+  gapCenter: number;
+  scored: boolean;
+};
+
 export function createSmileFlightToy(): Toy {
   const canvas = document.createElement("canvas");
   const context = getCanvasContext(canvas);
   const readout = document.createElement("div");
+  const gates: Gate[] = [];
 
   let mounted = false;
   let latestFrame: FaceFrame | null = null;
   let animationFrameId = 0;
-  let startTime = performance.now();
+  let lastFrameTime = performance.now();
   let latestSmileScore = 0;
+  let score = 0;
+  let collisionUntil = 0;
 
   return {
     id: "smile-flight",
@@ -18,11 +27,15 @@ export function createSmileFlightToy(): Toy {
       const shell = document.createElement("section");
 
       mounted = true;
-      startTime = performance.now();
+      latestSmileScore = 0;
+      score = 0;
+      collisionUntil = 0;
+      gates.length = 0;
+      lastFrameTime = performance.now();
       shell.className = "toy-stage";
       canvas.className = "toy-canvas";
       readout.className = "toy-readout";
-      readout.textContent = "Enable camera, then smile to fly upward.";
+      readout.textContent = "Enable camera, then smile to move the ball upward.";
       shell.append(canvas, readout);
       container.replaceChildren(shell);
       animationFrameId = requestAnimationFrame(draw);
@@ -51,112 +64,159 @@ export function createSmileFlightToy(): Toy {
       return;
     }
 
+    const deltaSeconds = Math.min((now - lastFrameTime) / 1000, 0.05);
     const scaledWidth = Math.round(width * pixelRatio);
     const scaledHeight = Math.round(height * pixelRatio);
+
+    lastFrameTime = now;
 
     if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
       canvas.width = scaledWidth;
       canvas.height = scaledHeight;
+      resetGates(width);
     }
 
     const smileProgress = clamp(latestSmileScore / 0.85, 0, 1);
-    const playerX = width * 0.24;
-    const playerY = lerp(height * 0.82, height * 0.18, smileProgress);
-    const elapsed = (now - startTime) / 1000;
+    const ball = {
+      x: width * 0.22,
+      y: lerp(height * 0.82, height * 0.18, smileProgress),
+      radius: 24
+    };
+
+    updateGates(width, deltaSeconds);
+
+    const collided = hasCollision(ball.x, ball.y, ball.radius, height);
+
+    if (collided) {
+      collisionUntil = now + 180;
+    }
 
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, width, height);
-    drawBackground(width, height);
-    drawPipes(width, height, elapsed);
-    drawPlayer(playerX, playerY, smileProgress);
+    drawBackground(width, height, now < collisionUntil);
+    drawGates(height);
+    drawBall(ball.x, ball.y, ball.radius);
 
     readout.textContent = latestFrame?.hasFace
-      ? `smile ${latestSmileScore.toFixed(3)} | mouthSmileLeft ${(latestFrame.blendshapes.get("mouthSmileLeft") ?? 0).toFixed(3)} | mouthSmileRight ${(latestFrame.blendshapes.get("mouthSmileRight") ?? 0).toFixed(3)}`
+      ? `score ${score} | smile ${latestSmileScore.toFixed(3)} | left ${(latestFrame.blendshapes.get("mouthSmileLeft") ?? 0).toFixed(3)} | right ${(latestFrame.blendshapes.get("mouthSmileRight") ?? 0).toFixed(3)}`
       : "No face yet.";
     animationFrameId = requestAnimationFrame(draw);
   }
 
-  function drawBackground(width: number, height: number) {
-    const gradient = context.createLinearGradient(0, 0, 0, height);
+  function resetGates(width: number) {
+    const spacing = getGateSpacing();
 
-    gradient.addColorStop(0, "#123047");
-    gradient.addColorStop(1, "#182116");
-    context.fillStyle = gradient;
+    gates.length = 0;
+
+    for (let i = 0; i < 4; i += 1) {
+      gates.push({
+        x: width + i * spacing + 140,
+        gapCenter: getGapCenter(i),
+        scored: false
+      });
+    }
+  }
+
+  function updateGates(width: number, deltaSeconds: number) {
+    const speed = 140;
+    const spacing = getGateSpacing();
+    const gateWidth = getGateWidth();
+
+    if (gates.length === 0) {
+      resetGates(width);
+      return;
+    }
+
+    for (const gate of gates) {
+      gate.x -= speed * deltaSeconds;
+
+      if (!gate.scored && gate.x + gateWidth < width * 0.22) {
+        gate.scored = true;
+        score += 1;
+      }
+
+      if (gate.x + gateWidth < 0) {
+        const rightmostX = Math.max(...gates.map((currentGate) => currentGate.x));
+
+        gate.x = rightmostX + spacing;
+        gate.gapCenter = getGapCenter(score + gates.indexOf(gate));
+        gate.scored = false;
+      }
+    }
+  }
+
+  function drawBackground(width: number, height: number, collided: boolean) {
+    context.fillStyle = collided ? "#411717" : "#121819";
     context.fillRect(0, 0, width, height);
 
-    context.fillStyle = "rgba(247, 243, 234, 0.08)";
+    context.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    context.lineWidth = 1;
 
-    for (let i = 0; i < 7; i += 1) {
-      const x = ((i * 173 + performance.now() * 0.018) % (width + 120)) - 80;
-      const y = 42 + (i % 3) * 56;
-
+    for (let x = 0; x <= width; x += 56) {
       context.beginPath();
-      context.ellipse(x, y, 42, 12, 0, 0, Math.PI * 2);
-      context.fill();
+      context.moveTo(x, 0);
+      context.lineTo(x, height);
+      context.stroke();
     }
   }
 
-  function drawPipes(width: number, height: number, elapsed: number) {
-    const spacing = 260;
-    const speed = 120;
-    const pipeWidth = 58;
-    const gapHeight = 180;
-    const pipeCount = Math.ceil(width / spacing) + 4;
-    const totalSpan = spacing * pipeCount;
-    const offset = (elapsed * speed) % totalSpan;
+  function drawGates(height: number) {
+    const gateWidth = getGateWidth();
+    const gapHeight = getGapHeight(height);
 
     context.fillStyle = "#3fbf82";
-    context.strokeStyle = "rgba(0, 0, 0, 0.28)";
+    context.strokeStyle = "rgba(0, 0, 0, 0.32)";
     context.lineWidth = 3;
 
-    for (let i = 0; i < pipeCount; i += 1) {
-      const x = width + i * spacing - offset;
-      const gapCenter = height * getPipeGapCenter(i);
-      const topHeight = gapCenter - gapHeight / 2;
-      const bottomY = gapCenter + gapHeight / 2;
+    for (const gate of gates) {
+      const gapCenterY = height * gate.gapCenter;
+      const topHeight = gapCenterY - gapHeight / 2;
+      const bottomY = gapCenterY + gapHeight / 2;
 
-      drawPipe(x, 0, pipeWidth, topHeight);
-      drawPipe(x, bottomY, pipeWidth, height - bottomY);
+      drawGatePart(gate.x, 0, gateWidth, topHeight);
+      drawGatePart(gate.x, bottomY, gateWidth, height - bottomY);
     }
   }
 
-  function getPipeGapCenter(index: number) {
-    const centers = [0.42, 0.62, 0.36, 0.54, 0.72, 0.48, 0.30];
-
-    return centers[index % centers.length];
-  }
-
-  function drawPipe(x: number, y: number, width: number, height: number) {
+  function drawGatePart(x: number, y: number, width: number, height: number) {
     context.fillRect(x, y, width, height);
     context.strokeRect(x, y, width, height);
   }
 
-  function drawPlayer(x: number, y: number, smileProgress: number) {
-    context.save();
-    context.translate(x, y);
-    context.rotate((smileProgress - 0.5) * -0.32);
-
+  function drawBall(x: number, y: number, radius: number) {
     context.fillStyle = "#f7d154";
     context.beginPath();
-    context.arc(0, 0, 26, 0, Math.PI * 2);
+    context.arc(x, y, radius, 0, Math.PI * 2);
     context.fill();
+  }
 
-    context.fillStyle = "#121819";
-    context.beginPath();
-    context.arc(9, -8, 4, 0, Math.PI * 2);
-    context.fill();
+  function hasCollision(ballX: number, ballY: number, ballRadius: number, height: number) {
+    const gateWidth = getGateWidth();
+    const gapHeight = getGapHeight(height);
 
-    context.strokeStyle = "#121819";
-    context.lineWidth = 3;
-    context.beginPath();
-    context.arc(2, 4, 10, 0.1, Math.PI - 0.1);
-    context.stroke();
+    for (const gate of gates) {
+      const overlapsX = ballX + ballRadius > gate.x && ballX - ballRadius < gate.x + gateWidth;
 
-    context.fillStyle = "rgba(247, 243, 234, 0.55)";
-    context.beginPath();
-    context.ellipse(-18, 4, 14, 7, -0.45, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
+      if (!overlapsX) {
+        continue;
+      }
+
+      const gapCenterY = height * gate.gapCenter;
+      const gapTop = gapCenterY - gapHeight / 2;
+      const gapBottom = gapCenterY + gapHeight / 2;
+
+      if (ballY - ballRadius < gapTop || ballY + ballRadius > gapBottom) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function getGapCenter(index: number) {
+    const centers = [0.42, 0.62, 0.36, 0.56, 0.70, 0.48];
+
+    return centers[index % centers.length];
   }
 }
 
@@ -165,6 +225,18 @@ function getSmileScore(frame: FaceFrame) {
   const right = frame.blendshapes.get("mouthSmileRight") ?? 0;
 
   return (left + right) / 2;
+}
+
+function getGateSpacing() {
+  return 360;
+}
+
+function getGateWidth() {
+  return 64;
+}
+
+function getGapHeight(canvasHeight: number) {
+  return Math.max(220, canvasHeight * 0.36);
 }
 
 function clamp(value: number, min: number, max: number) {
