@@ -2,6 +2,7 @@ import "./styles.css";
 import { createFaceInput } from "./mediapipe/faceInput";
 import { createDebugToy } from "./toys/debugToy";
 import { createHeadPoseBallToy } from "./toys/headPoseBallToy";
+import { createSmileFlightToy } from "./toys/smileFlightToy";
 import type { FaceFrame, Toy } from "./types";
 
 const enableButton = getElement<HTMLButtonElement>("#enable-camera");
@@ -12,7 +13,8 @@ const hiddenVideoHost = getElement<HTMLDivElement>("#hidden-video-host");
 const faceInput = createFaceInput();
 const toys: Toy[] = [
   createDebugToy(faceInput.video),
-  createHeadPoseBallToy()
+  createHeadPoseBallToy(),
+  createSmileFlightToy()
 ];
 
 let activeToy = toys[0];
