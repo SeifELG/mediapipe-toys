@@ -4,6 +4,7 @@ import { createBlinkDetectorToy } from "./toys/blinkDetectorToy";
 import { createDebugToy } from "./toys/debugToy";
 import { createEyeTrackingLabToy } from "./toys/eyeTrackingLabToy";
 import { createHeadPoseBallToy } from "./toys/headPoseBallToy";
+import { createMaskOnlyToy } from "./toys/maskOnlyToy";
 import { createSmileFlightToy } from "./toys/smileFlightToy";
 import type { FaceFrame, Toy } from "./types";
 
@@ -16,6 +17,7 @@ const faceInput = createFaceInput();
 const toys: Toy[] = [
   createDebugToy(faceInput.video),
   createHeadPoseBallToy(),
+  createMaskOnlyToy(),
   createSmileFlightToy(),
   createBlinkDetectorToy(),
   createEyeTrackingLabToy()
