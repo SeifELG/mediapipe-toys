@@ -232,6 +232,20 @@ h1 {
   padding: 0.58rem 0.78rem;
 }
 
+.toy-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.toy-panel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
 .toy-canvas {
   width: 100%;
   height: min(64vh, 680px);
@@ -239,6 +253,11 @@ h1 {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   background: #121819;
+}
+
+.blink-canvas {
+  height: min(44vh, 420px);
+  min-height: 260px;
 }
 
 .toy-readout {
