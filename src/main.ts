@@ -13,7 +13,6 @@ const statusLabel = getElement<HTMLSpanElement>("#status");
 const faceCountLabel = getElement<HTMLSpanElement>("#face-count");
 const emptyState = getElement<HTMLDivElement>("#empty-state");
 const eyeScoreList = getElement<HTMLDivElement>("#eye-score-list");
-const root = document.documentElement;
 const eyeBlendshapeNames = [
   "eyeBlinkLeft",
   "eyeBlinkRight",
@@ -31,7 +30,6 @@ const eyeBlendshapeNames = [
   "eyeWideRight"
 ];
 const maxHistoryLength = 140;
-const gazeSensitivity = 3.2;
 
 const maybeCanvasContext = canvas.getContext("2d");
 
@@ -166,10 +164,9 @@ function drawResult(result: FaceLandmarkerResult) {
 
 function updateEyeScores(result: FaceLandmarkerResult) {
   const categories = result.faceBlendshapes[0]?.categories ?? [];
-  const scoreByName = new Map(categories.map((category) => [category.categoryName, category.score]));
 
   for (const score of eyeScores) {
-    const value = scoreByName.get(score.name) ?? 0;
+    const value = categories.find((category) => category.categoryName === score.name)?.score ?? 0;
 
     score.history.push(value);
 
@@ -180,18 +177,6 @@ function updateEyeScores(result: FaceLandmarkerResult) {
     score.value.textContent = value.toFixed(3);
     drawScoreChart(score);
   }
-
-  updateBackgroundFromGaze(scoreByName);
-}
-
-function updateBackgroundFromGaze(scoreByName: Map<string, number>) {
-  const lookLeft =
-    (scoreByName.get("eyeLookOutLeft") ?? 0) + (scoreByName.get("eyeLookInRight") ?? 0);
-  const lookRight =
-    (scoreByName.get("eyeLookInLeft") ?? 0) + (scoreByName.get("eyeLookOutRight") ?? 0);
-  const horizontalGaze = clamp((lookRight - lookLeft) * gazeSensitivity, -1, 1);
-
-  root.style.setProperty("--gaze-mix", `${((horizontalGaze + 1) / 2).toFixed(3)}`);
 }
 
 function createEyeScoreRows() {
@@ -294,10 +279,6 @@ function syncCanvasToVideo() {
 
 function setStatus(message: string) {
   statusLabel.textContent = message;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
 }
 
 window.addEventListener("beforeunload", () => {
