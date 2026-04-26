@@ -60,6 +60,30 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(247, 243, 234, 0.78);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.tab-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7f3ea;
+  padding: 0.62rem 0.85rem;
+}
+
+.tab-button[aria-selected="true"] {
+  background: #f7d154;
+  color: #181713;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.95fr);
@@ -191,6 +215,26 @@ h1 {
   text-align: right;
 }
 
+.toy-stage {
+  display: grid;
+  gap: 12px;
+}
+
+.toy-canvas {
+  width: 100%;
+  height: min(64vh, 680px);
+  min-height: 420px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: #121819;
+}
+
+.toy-readout {
+  color: rgba(247, 243, 234, 0.82);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 640px) {
   #app {
     align-items: start;
@@ -201,9 +245,14 @@ h1 {
   }
 
   .topbar,
-  .statusbar {
+  .statusbar,
+  .topbar-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .tabs {
+    overflow-x: auto;
   }
 
   .workspace {
@@ -225,5 +274,10 @@ h1 {
   .score-row canvas {
     grid-column: 1 / -1;
     grid-row: 2;
+  }
+
+  .toy-canvas {
+    height: 56vh;
+    min-height: 300px;
   }
 }
