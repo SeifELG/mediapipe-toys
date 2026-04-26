@@ -2,7 +2,8 @@ import {
   DrawingUtils,
   FaceLandmarker,
   FilesetResolver,
-  type FaceLandmarkerResult
+  type FaceLandmarkerResult,
+  type Matrix
 } from "@mediapipe/tasks-vision";
 import "./styles.css";
 
@@ -67,6 +68,33 @@ const blendshapeNames = [
   "noseSneerLeft",
   "noseSneerRight"
 ];
+const transformSignalNames = [
+  "poseYawDegrees",
+  "posePitchDegrees",
+  "poseRollDegrees",
+  "translationX",
+  "translationY",
+  "translationZ",
+  "scaleX",
+  "scaleY",
+  "scaleZ",
+  "matrix00",
+  "matrix01",
+  "matrix02",
+  "matrix03",
+  "matrix10",
+  "matrix11",
+  "matrix12",
+  "matrix13",
+  "matrix20",
+  "matrix21",
+  "matrix22",
+  "matrix23",
+  "matrix30",
+  "matrix31",
+  "matrix32",
+  "matrix33"
+];
 const maxHistoryLength = 140;
 
 const maybeCanvasContext = canvas.getContext("2d");
@@ -76,7 +104,7 @@ if (!maybeCanvasContext) {
 }
 
 const canvasContext = maybeCanvasContext;
-const blendshapeScores = createBlendshapeScoreRows();
+const scoreRows = createScoreRows();
 
 let faceLandmarker: FaceLandmarker | null = null;
 let drawingUtils: DrawingUtils | null = null;
@@ -120,7 +148,8 @@ async function setupFaceLandmarker() {
     },
     runningMode: "VIDEO",
     numFaces: 1,
-    outputFaceBlendshapes: true
+    outputFaceBlendshapes: true,
+    outputFacialTransformationMatrixes: true
   });
 
   drawingUtils = new DrawingUtils(canvasContext);
@@ -170,7 +199,7 @@ function renderLoop() {
 function drawResult(result: FaceLandmarkerResult) {
   canvasContext.clearRect(0, 0, canvas.width, canvas.height);
   faceCountLabel.textContent = `Faces: ${result.faceLandmarks.length}`;
-  updateBlendshapeScores(result);
+  updateScores(result);
 
   for (const landmarks of result.faceLandmarks) {
     drawingUtils?.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
@@ -200,12 +229,13 @@ function drawResult(result: FaceLandmarkerResult) {
   }
 }
 
-function updateBlendshapeScores(result: FaceLandmarkerResult) {
+function updateScores(result: FaceLandmarkerResult) {
   const categories = result.faceBlendshapes[0]?.categories ?? [];
   const scoreByName = new Map(categories.map((category) => [category.categoryName, category.score]));
+  const transformByName = getTransformSignals(result.facialTransformationMatrixes[0]);
 
-  for (const score of blendshapeScores) {
-    const value = scoreByName.get(score.name) ?? 0;
+  for (const score of scoreRows) {
+    const value = scoreByName.get(score.name) ?? transformByName.get(score.name) ?? 0;
 
     score.history.push(value);
 
@@ -218,8 +248,8 @@ function updateBlendshapeScores(result: FaceLandmarkerResult) {
   }
 }
 
-function createBlendshapeScoreRows() {
-  return blendshapeNames.map((name) => {
+function createScoreRows() {
+  return [...transformSignalNames, ...blendshapeNames].map((name) => {
     const row = document.createElement("div");
     const label = document.createElement("span");
     const chart = document.createElement("canvas");
@@ -249,7 +279,7 @@ function createBlendshapeScoreRows() {
   });
 }
 
-function drawScoreChart(score: (typeof blendshapeScores)[number]) {
+function drawScoreChart(score: (typeof scoreRows)[number]) {
   const { chart, chartContext, history } = score;
   const pixelRatio = window.devicePixelRatio || 1;
   const width = chart.clientWidth;
@@ -273,11 +303,14 @@ function drawScoreChart(score: (typeof blendshapeScores)[number]) {
   chartContext.fillStyle = "rgba(255, 255, 255, 0.035)";
   chartContext.fillRect(0, 0, width, height);
 
+  const chartRange = getChartRange(history);
+  const zeroY = getYForValue(0, chartRange.min, chartRange.max, height);
+
   chartContext.strokeStyle = "rgba(255, 255, 255, 0.12)";
   chartContext.lineWidth = 1;
   chartContext.beginPath();
-  chartContext.moveTo(0, height / 2);
-  chartContext.lineTo(width, height / 2);
+  chartContext.moveTo(0, zeroY);
+  chartContext.lineTo(width, zeroY);
   chartContext.stroke();
 
   if (history.length < 2) {
@@ -290,7 +323,7 @@ function drawScoreChart(score: (typeof blendshapeScores)[number]) {
 
   history.forEach((value, index) => {
     const x = (index / (maxHistoryLength - 1)) * width;
-    const y = height - value * height;
+    const y = getYForValue(value, chartRange.min, chartRange.max, height);
 
     if (index === 0) {
       chartContext.moveTo(x, y);
@@ -300,6 +333,68 @@ function drawScoreChart(score: (typeof blendshapeScores)[number]) {
   });
 
   chartContext.stroke();
+}
+
+function getTransformSignals(matrix?: Matrix) {
+  const signals = new Map<string, number>();
+
+  if (!matrix || matrix.data.length < 16) {
+    return signals;
+  }
+
+  const m = matrix.data;
+  const scaleX = Math.hypot(m[0], m[1], m[2]);
+  const scaleY = Math.hypot(m[4], m[5], m[6]);
+  const scaleZ = Math.hypot(m[8], m[9], m[10]);
+  const r00 = m[0] / scaleX;
+  const r01 = m[4] / scaleY;
+  const r02 = m[8] / scaleZ;
+  const r10 = m[1] / scaleX;
+  const r11 = m[5] / scaleY;
+  const r12 = m[9] / scaleZ;
+  const r20 = m[2] / scaleX;
+  const r21 = m[6] / scaleY;
+  const r22 = m[10] / scaleZ;
+  const pitch = Math.atan2(-r21, Math.hypot(r20, r22));
+  const yaw = Math.atan2(r20, r22);
+  const roll = Math.atan2(r01, r11);
+
+  signals.set("poseYawDegrees", radiansToDegrees(yaw));
+  signals.set("posePitchDegrees", radiansToDegrees(pitch));
+  signals.set("poseRollDegrees", radiansToDegrees(roll));
+  signals.set("translationX", m[12]);
+  signals.set("translationY", m[13]);
+  signals.set("translationZ", m[14]);
+  signals.set("scaleX", scaleX);
+  signals.set("scaleY", scaleY);
+  signals.set("scaleZ", scaleZ);
+
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = 0; column < 4; column += 1) {
+      signals.set(`matrix${row}${column}`, m[row * 4 + column]);
+    }
+  }
+
+  return signals;
+}
+
+function getChartRange(history: number[]) {
+  const min = Math.min(0, ...history);
+  const max = Math.max(1, ...history);
+
+  if (max - min < 0.001) {
+    return { min: min - 0.5, max: max + 0.5 };
+  }
+
+  return { min, max };
+}
+
+function getYForValue(value: number, min: number, max: number, height: number) {
+  return height - ((value - min) / (max - min)) * height;
+}
+
+function radiansToDegrees(radians: number) {
+  return (radians * 180) / Math.PI;
 }
 
 function syncCanvasToVideo() {
