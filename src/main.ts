@@ -2,6 +2,7 @@ import "./styles.css";
 import { createFaceInput } from "./mediapipe/faceInput";
 import { createBlinkDetectorToy } from "./toys/blinkDetectorToy";
 import { createDebugToy } from "./toys/debugToy";
+import { createEyeTrackingLabToy } from "./toys/eyeTrackingLabToy";
 import { createHeadPoseBallToy } from "./toys/headPoseBallToy";
 import { createSmileFlightToy } from "./toys/smileFlightToy";
 import type { FaceFrame, Toy } from "./types";
@@ -16,7 +17,8 @@ const toys: Toy[] = [
   createDebugToy(faceInput.video),
   createHeadPoseBallToy(),
   createSmileFlightToy(),
-  createBlinkDetectorToy()
+  createBlinkDetectorToy(),
+  createEyeTrackingLabToy()
 ];
 
 let activeToy = toys[0];
