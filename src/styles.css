@@ -220,6 +220,18 @@ h1 {
   gap: 12px;
 }
 
+.toy-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toy-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7f3ea;
+  padding: 0.58rem 0.78rem;
+}
+
 .toy-canvas {
   width: 100%;
   height: min(64vh, 680px);
