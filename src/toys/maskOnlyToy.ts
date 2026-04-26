@@ -1,13 +1,22 @@
-import { DrawingUtils, FaceLandmarker } from "@mediapipe/tasks-vision";
+import {
+  DrawingUtils,
+  FaceLandmarker,
+  FilesetResolver,
+  HandLandmarker,
+  type HandLandmarkerResult
+} from "@mediapipe/tasks-vision";
 import type { FaceFrame, Toy } from "../types";
 
-export function createMaskOnlyToy(): Toy {
+export function createMaskOnlyToy(video: HTMLVideoElement): Toy {
   const canvas = document.createElement("canvas");
   const context = getCanvasContext(canvas);
   const drawingUtils = new DrawingUtils(context);
   const readout = document.createElement("div");
 
   let mounted = false;
+  let handLandmarker: HandLandmarker | null = null;
+  let handLandmarkerPromise: Promise<HandLandmarker> | null = null;
+  let latestHands: HandLandmarkerResult | null = null;
 
   return {
     id: "mask-only",
@@ -19,9 +28,10 @@ export function createMaskOnlyToy(): Toy {
       shell.className = "toy-stage";
       canvas.className = "toy-canvas mask-canvas";
       readout.className = "toy-readout";
-      readout.textContent = "Enable camera to draw the face mesh without the video image.";
+      readout.textContent = "Loading hand tracker...";
       shell.append(canvas, readout);
       container.replaceChildren(shell);
+      setupHandLandmarker();
       drawEmpty();
     },
     update(frame) {
@@ -36,6 +46,32 @@ export function createMaskOnlyToy(): Toy {
     }
   };
 
+  async function setupHandLandmarker() {
+    if (handLandmarker) {
+      return handLandmarker;
+    }
+
+    if (!handLandmarkerPromise) {
+      handLandmarkerPromise = createHandLandmarker();
+    }
+
+    try {
+      handLandmarker = await handLandmarkerPromise;
+
+      if (mounted) {
+        readout.textContent = "Enable camera to draw face and hands without the video image.";
+      }
+    } catch (error) {
+      console.error(error);
+
+      if (mounted) {
+        readout.textContent = "Hand tracker failed to load.";
+      }
+    }
+
+    return handLandmarker;
+  }
+
   function draw(frame: FaceFrame) {
     const size = syncCanvasSize(canvas);
 
@@ -46,6 +82,7 @@ export function createMaskOnlyToy(): Toy {
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawBackdrop(canvas.width, canvas.height);
+    latestHands = detectHands(frame.timestamp);
     context.save();
     context.translate(canvas.width, 0);
     context.scale(-1, 1);
@@ -81,10 +118,32 @@ export function createMaskOnlyToy(): Toy {
       });
     }
 
+    if (latestHands) {
+      for (const landmarks of latestHands.landmarks) {
+        drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
+          color: "#b68cff",
+          lineWidth: 3
+        });
+        drawingUtils.drawLandmarks(landmarks, {
+          color: "#f7f3ea",
+          lineWidth: 1,
+          radius: 3
+        });
+      }
+    }
+
     context.restore();
     readout.textContent = frame.hasFace
-      ? `Faces: ${frame.result.faceLandmarks.length}`
-      : "No face detected.";
+      ? `Faces: ${frame.result.faceLandmarks.length} | Hands: ${latestHands?.landmarks.length ?? 0}`
+      : `No face detected. Hands: ${latestHands?.landmarks.length ?? 0}`;
+  }
+
+  function detectHands(timestamp: number) {
+    if (!handLandmarker || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      return latestHands;
+    }
+
+    return handLandmarker.detectForVideo(video, timestamp);
   }
 
   function drawEmpty() {
@@ -117,6 +176,22 @@ export function createMaskOnlyToy(): Toy {
       context.stroke();
     }
   }
+}
+
+async function createHandLandmarker() {
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+  );
+
+  return HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numHands: 2
+  });
 }
 
 function syncCanvasSize(canvas: HTMLCanvasElement) {

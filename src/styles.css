@@ -260,6 +260,12 @@ h1 {
   min-height: 260px;
 }
 
+.mask-canvas {
+  aspect-ratio: 16 / 9;
+  height: auto;
+  min-height: 0;
+}
+
 .toy-readout {
   color: rgba(247, 243, 234, 0.82);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;

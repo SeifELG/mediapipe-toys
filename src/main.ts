@@ -17,7 +17,7 @@ const faceInput = createFaceInput();
 const toys: Toy[] = [
   createDebugToy(faceInput.video),
   createHeadPoseBallToy(),
-  createMaskOnlyToy(),
+  createMaskOnlyToy(faceInput.video),
   createSmileFlightToy(),
   createBlinkDetectorToy(),
   createEyeTrackingLabToy()
