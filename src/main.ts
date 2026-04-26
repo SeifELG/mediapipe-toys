@@ -12,8 +12,17 @@ const canvas = getElement<HTMLCanvasElement>("#overlay");
 const statusLabel = getElement<HTMLSpanElement>("#status");
 const faceCountLabel = getElement<HTMLSpanElement>("#face-count");
 const emptyState = getElement<HTMLDivElement>("#empty-state");
-const eyeScoreList = getElement<HTMLDivElement>("#eye-score-list");
-const eyeBlendshapeNames = [
+const blendshapeScoreList = getElement<HTMLDivElement>("#blendshape-score-list");
+const blendshapeNames = [
+  "_neutral",
+  "browDownLeft",
+  "browDownRight",
+  "browInnerUp",
+  "browOuterUpLeft",
+  "browOuterUpRight",
+  "cheekPuff",
+  "cheekSquintLeft",
+  "cheekSquintRight",
   "eyeBlinkLeft",
   "eyeBlinkRight",
   "eyeLookDownLeft",
@@ -27,7 +36,36 @@ const eyeBlendshapeNames = [
   "eyeSquintLeft",
   "eyeSquintRight",
   "eyeWideLeft",
-  "eyeWideRight"
+  "eyeWideRight",
+  "jawForward",
+  "jawLeft",
+  "jawOpen",
+  "jawRight",
+  "mouthClose",
+  "mouthDimpleLeft",
+  "mouthDimpleRight",
+  "mouthFrownLeft",
+  "mouthFrownRight",
+  "mouthFunnel",
+  "mouthLeft",
+  "mouthLowerDownLeft",
+  "mouthLowerDownRight",
+  "mouthPressLeft",
+  "mouthPressRight",
+  "mouthPucker",
+  "mouthRight",
+  "mouthRollLower",
+  "mouthRollUpper",
+  "mouthShrugLower",
+  "mouthShrugUpper",
+  "mouthSmileLeft",
+  "mouthSmileRight",
+  "mouthStretchLeft",
+  "mouthStretchRight",
+  "mouthUpperUpLeft",
+  "mouthUpperUpRight",
+  "noseSneerLeft",
+  "noseSneerRight"
 ];
 const maxHistoryLength = 140;
 
@@ -38,7 +76,7 @@ if (!maybeCanvasContext) {
 }
 
 const canvasContext = maybeCanvasContext;
-const eyeScores = createEyeScoreRows();
+const blendshapeScores = createBlendshapeScoreRows();
 
 let faceLandmarker: FaceLandmarker | null = null;
 let drawingUtils: DrawingUtils | null = null;
@@ -132,7 +170,7 @@ function renderLoop() {
 function drawResult(result: FaceLandmarkerResult) {
   canvasContext.clearRect(0, 0, canvas.width, canvas.height);
   faceCountLabel.textContent = `Faces: ${result.faceLandmarks.length}`;
-  updateEyeScores(result);
+  updateBlendshapeScores(result);
 
   for (const landmarks of result.faceLandmarks) {
     drawingUtils?.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
@@ -162,11 +200,12 @@ function drawResult(result: FaceLandmarkerResult) {
   }
 }
 
-function updateEyeScores(result: FaceLandmarkerResult) {
+function updateBlendshapeScores(result: FaceLandmarkerResult) {
   const categories = result.faceBlendshapes[0]?.categories ?? [];
+  const scoreByName = new Map(categories.map((category) => [category.categoryName, category.score]));
 
-  for (const score of eyeScores) {
-    const value = categories.find((category) => category.categoryName === score.name)?.score ?? 0;
+  for (const score of blendshapeScores) {
+    const value = scoreByName.get(score.name) ?? 0;
 
     score.history.push(value);
 
@@ -179,8 +218,8 @@ function updateEyeScores(result: FaceLandmarkerResult) {
   }
 }
 
-function createEyeScoreRows() {
-  return eyeBlendshapeNames.map((name) => {
+function createBlendshapeScoreRows() {
+  return blendshapeNames.map((name) => {
     const row = document.createElement("div");
     const label = document.createElement("span");
     const chart = document.createElement("canvas");
@@ -198,7 +237,7 @@ function createEyeScoreRows() {
     value.textContent = "0.000";
 
     row.append(label, chart, value);
-    eyeScoreList.append(row);
+    blendshapeScoreList.append(row);
 
     return {
       name,
@@ -210,7 +249,7 @@ function createEyeScoreRows() {
   });
 }
 
-function drawScoreChart(score: (typeof eyeScores)[number]) {
+function drawScoreChart(score: (typeof blendshapeScores)[number]) {
   const { chart, chartContext, history } = score;
   const pixelRatio = window.devicePixelRatio || 1;
   const width = chart.clientWidth;
