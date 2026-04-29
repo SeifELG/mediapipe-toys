@@ -266,19 +266,19 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
 
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.save();
-    context.lineWidth = 4;
-    context.font = "700 13px Inter, ui-sans-serif, system-ui, sans-serif";
+    context.lineWidth = 7;
+    context.font = "800 18px Inter, ui-sans-serif, system-ui, sans-serif";
     context.textBaseline = "middle";
-    drawAxis(origin, basis.right, "#ff6b7a", "right", 78, false);
-    drawAxis(origin, basis.upSeed, "#f7d154", "up seed", 72, false);
-    drawAxis(origin, basis.normal, "#b68cff", "normal", 86, false);
-    drawAxis(origin, basis.up, "#64e6a8", "up", 64, true);
+    drawAxis(origin, basis.right, "#ff6b7a", "right", 140, false);
+    drawAxis(origin, basis.upSeed, "#f7d154", "up seed", 128, false);
+    drawAxis(origin, basis.normal, "#b68cff", "normal", 154, false);
+    drawAxis(origin, basis.up, "#64e6a8", "up", 116, true);
 
     context.fillStyle = "#f7f3ea";
     context.strokeStyle = "rgba(7, 11, 13, 0.85)";
-    context.lineWidth = 3;
+    context.lineWidth = 5;
     context.beginPath();
-    context.arc(origin.x, origin.y, 6, 0, Math.PI * 2);
+    context.arc(origin.x, origin.y, 10, 0, Math.PI * 2);
     context.stroke();
     context.fill();
     context.restore();
@@ -297,7 +297,7 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
       y: origin.y + axis.y * length
     };
     const angle = Math.atan2(end.y - origin.y, end.x - origin.x);
-    const arrowSize = 10;
+    const arrowSize = 18;
 
     context.save();
     context.strokeStyle = color;
@@ -306,7 +306,7 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
     context.shadowBlur = 6;
 
     if (dashed) {
-      context.setLineDash([8, 7]);
+      context.setLineDash([14, 10]);
     }
 
     context.beginPath();
@@ -327,9 +327,9 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
     context.closePath();
     context.fill();
     context.strokeStyle = "rgba(7, 11, 13, 0.9)";
-    context.lineWidth = 4;
-    context.strokeText(label, end.x + 8, end.y);
-    context.fillText(label, end.x + 8, end.y);
+    context.lineWidth = 6;
+    context.strokeText(label, end.x + 12, end.y);
+    context.fillText(label, end.x + 12, end.y);
     context.restore();
   }
 
