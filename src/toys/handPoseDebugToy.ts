@@ -34,6 +34,13 @@ type Vec3 = {
   z: number;
 };
 
+type PalmBasis = {
+  right: Vec3;
+  upSeed: Vec3;
+  normal: Vec3;
+  up: Vec3;
+};
+
 export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
   const canvas = document.createElement("canvas");
   const context = getCanvasContext(canvas);
@@ -46,6 +53,7 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
   let gestureRecognizer: GestureRecognizer | null = null;
   let gestureRecognizerPromise: Promise<GestureRecognizer> | null = null;
   let latestResult: GestureRecognizerResult | null = null;
+  let showBasisOverlay = true;
 
   return {
     id: "hand-pose-debug",
@@ -58,6 +66,8 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
       const heading = document.createElement("div");
       const title = document.createElement("h2");
       const count = document.createElement("span");
+      const controls = document.createElement("div");
+      const overlayButton = document.createElement("button");
 
       mounted = true;
       shell.className = "toy-stage";
@@ -67,19 +77,34 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
       readout.className = "toy-readout";
       panel.className = "blendshape-panel";
       heading.className = "panel-heading";
+      controls.className = "toy-controls";
       signalList.className = "score-list";
+      overlayButton.className = "toy-button";
+      overlayButton.type = "button";
       title.textContent = "Hand Pose Signals";
       count.textContent = "raw landmark z + derived palm pose";
       readout.textContent = "Loading gesture recognizer...";
+      updateOverlayButton();
+      overlayButton.addEventListener("click", () => {
+        showBasisOverlay = !showBasisOverlay;
+        updateOverlayButton();
+        draw(performance.now());
+      });
 
       heading.append(title, count);
+      controls.append(overlayButton);
       panel.append(heading, signalList);
-      canvasColumn.append(canvas, readout);
+      canvasColumn.append(controls, canvas, readout);
       workspace.append(canvasColumn, panel);
       shell.append(workspace);
       container.replaceChildren(shell);
       setupGestureRecognizer();
       drawEmpty();
+
+      function updateOverlayButton() {
+        overlayButton.textContent = showBasisOverlay ? "Hide axes" : "Show axes";
+        overlayButton.setAttribute("aria-pressed", String(showBasisOverlay));
+      }
     },
     update(frame) {
       if (!mounted) {
@@ -149,6 +174,11 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
     }
 
     context.restore();
+
+    if (showBasisOverlay) {
+      drawBasisOverlay(latestResult?.landmarks[0] ?? []);
+    }
+
     updateSignals(latestResult);
   }
 
@@ -225,6 +255,108 @@ export function createHandPoseDebugToy(video: HTMLVideoElement): Toy {
       context.stroke();
     }
   }
+
+  function drawBasisOverlay(landmarks: NormalizedLandmark[]) {
+    const basis = getPalmBasis(landmarks);
+    const origin = getPalmCenter(landmarks);
+
+    if (!basis || !origin) {
+      return;
+    }
+
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.save();
+    context.lineWidth = 4;
+    context.font = "700 13px Inter, ui-sans-serif, system-ui, sans-serif";
+    context.textBaseline = "middle";
+    drawAxis(origin, basis.right, "#ff6b7a", "right", 78, false);
+    drawAxis(origin, basis.upSeed, "#f7d154", "up seed", 72, false);
+    drawAxis(origin, basis.normal, "#b68cff", "normal", 86, false);
+    drawAxis(origin, basis.up, "#64e6a8", "up", 64, true);
+
+    context.fillStyle = "#f7f3ea";
+    context.strokeStyle = "rgba(7, 11, 13, 0.85)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(origin.x, origin.y, 6, 0, Math.PI * 2);
+    context.stroke();
+    context.fill();
+    context.restore();
+  }
+
+  function drawAxis(
+    origin: Vec3,
+    axis: Vec3,
+    color: string,
+    label: string,
+    length: number,
+    dashed: boolean
+  ) {
+    const end = {
+      x: origin.x - axis.x * length,
+      y: origin.y + axis.y * length
+    };
+    const angle = Math.atan2(end.y - origin.y, end.x - origin.x);
+    const arrowSize = 10;
+
+    context.save();
+    context.strokeStyle = color;
+    context.fillStyle = color;
+    context.shadowColor = "rgba(0, 0, 0, 0.45)";
+    context.shadowBlur = 6;
+
+    if (dashed) {
+      context.setLineDash([8, 7]);
+    }
+
+    context.beginPath();
+    context.moveTo(origin.x, origin.y);
+    context.lineTo(end.x, end.y);
+    context.stroke();
+    context.setLineDash([]);
+    context.beginPath();
+    context.moveTo(end.x, end.y);
+    context.lineTo(
+      end.x - Math.cos(angle - Math.PI / 6) * arrowSize,
+      end.y - Math.sin(angle - Math.PI / 6) * arrowSize
+    );
+    context.lineTo(
+      end.x - Math.cos(angle + Math.PI / 6) * arrowSize,
+      end.y - Math.sin(angle + Math.PI / 6) * arrowSize
+    );
+    context.closePath();
+    context.fill();
+    context.strokeStyle = "rgba(7, 11, 13, 0.9)";
+    context.lineWidth = 4;
+    context.strokeText(label, end.x + 8, end.y);
+    context.fillText(label, end.x + 8, end.y);
+    context.restore();
+  }
+
+  function getPalmCenter(landmarks: NormalizedLandmark[]) {
+    const points = palmIndexes
+      .map((index) => landmarks[index])
+      .filter((landmark): landmark is NormalizedLandmark => Boolean(landmark));
+
+    if (!points.length) {
+      return null;
+    }
+
+    const center = points.reduce(
+      (sum, point) => ({
+        x: sum.x + 1 - point.x,
+        y: sum.y + point.y,
+        z: sum.z + point.z
+      }),
+      { x: 0, y: 0, z: 0 }
+    );
+
+    return {
+      x: (center.x / points.length) * canvas.width,
+      y: (center.y / points.length) * canvas.height,
+      z: center.z / points.length
+    };
+  }
 }
 
 function createSignalRows(signalList: HTMLDivElement) {
@@ -284,6 +416,22 @@ async function createGestureRecognizer() {
 }
 
 function getPalmPose(landmarks: Array<Vec3 | Landmark | NormalizedLandmark>) {
+  const basis = getPalmBasis(landmarks);
+
+  if (!basis) {
+    return null;
+  }
+
+  return {
+    yawDegrees: radiansToDegrees(Math.atan2(basis.normal.x, basis.normal.z)),
+    pitchDegrees: radiansToDegrees(
+      Math.atan2(-basis.normal.y, Math.hypot(basis.normal.x, basis.normal.z))
+    ),
+    rollDegrees: radiansToDegrees(Math.atan2(basis.right.y, basis.right.x))
+  };
+}
+
+function getPalmBasis(landmarks: Array<Vec3 | Landmark | NormalizedLandmark>): PalmBasis | null {
   const wrist = landmarks[0];
   const indexMcp = landmarks[5];
   const middleMcp = landmarks[9];
@@ -312,11 +460,7 @@ function getPalmPose(landmarks: Array<Vec3 | Landmark | NormalizedLandmark>) {
     return null;
   }
 
-  return {
-    yawDegrees: radiansToDegrees(Math.atan2(normal.x, normal.z)),
-    pitchDegrees: radiansToDegrees(Math.atan2(-normal.y, Math.hypot(normal.x, normal.z))),
-    rollDegrees: radiansToDegrees(Math.atan2(right.y, right.x))
-  };
+  return { right, upSeed, normal, up };
 }
 
 function averageLandmarkZ(landmarks: NormalizedLandmark[], indexes: number[]) {
