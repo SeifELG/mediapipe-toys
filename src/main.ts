@@ -3,6 +3,7 @@ import { createFaceInput } from "./mediapipe/faceInput";
 import { createBlinkDetectorToy } from "./toys/blinkDetectorToy";
 import { createDebugToy } from "./toys/debugToy";
 import { createEyeTrackingLabToy } from "./toys/eyeTrackingLabToy";
+import { createHandDebugToy } from "./toys/handDebugToy";
 import { createHeadPoseBallToy } from "./toys/headPoseBallToy";
 import { createMaskOnlyToy } from "./toys/maskOnlyToy";
 import { createSmileFlightToy } from "./toys/smileFlightToy";
@@ -18,6 +19,7 @@ const toys: Toy[] = [
   createDebugToy(faceInput.video),
   createHeadPoseBallToy(),
   createMaskOnlyToy(faceInput.video),
+  createHandDebugToy(faceInput.video),
   createSmileFlightToy(),
   createBlinkDetectorToy(),
   createEyeTrackingLabToy()
