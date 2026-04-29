@@ -4,6 +4,7 @@ import { createBlinkDetectorToy } from "./toys/blinkDetectorToy";
 import { createDebugToy } from "./toys/debugToy";
 import { createEyeTrackingLabToy } from "./toys/eyeTrackingLabToy";
 import { createHandDebugToy } from "./toys/handDebugToy";
+import { createHandPoseDebugToy } from "./toys/handPoseDebugToy";
 import { createHeadPoseBallToy } from "./toys/headPoseBallToy";
 import { createMaskOnlyToy } from "./toys/maskOnlyToy";
 import { createSmileFlightToy } from "./toys/smileFlightToy";
@@ -20,6 +21,7 @@ const toys: Toy[] = [
   createHeadPoseBallToy(),
   createMaskOnlyToy(faceInput.video),
   createHandDebugToy(faceInput.video),
+  createHandPoseDebugToy(faceInput.video),
   createSmileFlightToy(),
   createBlinkDetectorToy(),
   createEyeTrackingLabToy()
